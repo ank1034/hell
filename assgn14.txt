@@ -1,0 +1,357 @@
+Login.jsp
+
+<%@ page language="java" contentType="text/html; charset=ISO-8859-1"
+    pageEncoding="ISO-8859-1"%>
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+<title>Insert title here</title>
+</head>
+<body>
+<form action="LoginServlet" method="post">
+	Username:<input type="text" name="uname"/>
+	Password:<input type="password" name="pass"/>
+	<input type="submit" value="Login"/>
+</form>
+</body>
+</html>
+
+package com.verizon.model;
+
+public class BankCustomer {
+	int custId;
+	String custName;
+	int accno;
+	double balance;
+	
+	public BankCustomer() {
+		super();
+		// TODO Auto-generated constructor stub
+	}
+	public BankCustomer(int custId, String custName, int accno, double balance) {
+		super();
+		this.custId = custId;
+		this.custName = custName;
+		this.accno = accno;
+		this.balance = balance;
+	}
+	public int getCustId() {
+		return custId;
+	}
+	public void setCustId(int custId) {
+		this.custId = custId;
+	}
+	public String getCustName() {
+		return custName;
+	}
+	public void setCustName(String custName) {
+		this.custName = custName;
+	}
+	public int getAccno() {
+		return accno;
+	}
+	public void setAccno(int accno) {
+		this.accno = accno;
+	}
+	public double getBalance() {
+		return balance;
+	}
+	public void setBalance(double balance) {
+		this.balance = balance;
+	}
+	
+
+}
+
+package com.verizon.dao;
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
+
+import com.verizon.model.BankCustomer;
+import com.verizon.model.User;
+
+public class BankCustomerDAO {
+	Connection con;
+	
+	public BankCustomerDAO()
+	{
+		try {
+			Class.forName("oracle.jdbc.driver.OracleDriver");
+			con=DriverManager.getConnection
+					("jdbc:oracle:thin:@localhost:1521:orcl","hr","admin");
+		} catch (ClassNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+	}
+	
+	public List<BankCustomer> getAllCustomers()
+	{
+		PreparedStatement pst;
+		try {
+			pst = con.prepareStatement("select * from bankcustomer");
+			ResultSet rs=pst.executeQuery();
+			List<BankCustomer> bcList=new ArrayList<>();
+			while(rs.next())
+			{
+				BankCustomer bc=new BankCustomer();
+				bc.setCustId(rs.getInt(1));
+				bc.setCustName(rs.getString(2));
+				bc.setAccno(rs.getInt(3));
+				bc.setBalance(rs.getDouble(4));
+				bcList.add(bc);
+			}
+			return bcList;
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		return null;	
+	}
+	public BankCustomer getCustomerDetails(int accno)
+	{
+		try {
+			PreparedStatement pst=con.prepareStatement("select * from bankcustomer where accno=?");
+			pst.setInt(1, accno);
+			ResultSet rs=pst.executeQuery();
+			BankCustomer bc=new BankCustomer();
+			if(rs.next())
+			{
+				bc.setCustId(rs.getInt(1));
+				bc.setCustName(rs.getString(2));
+				bc.setAccno(rs.getInt(3));
+				bc.setBalance(rs.getDouble(4));
+			}
+			return bc;
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
+	public boolean withdraw(int accno,double amt) throws Exception
+	{
+		try {
+			BankCustomer b1=getCustomerDetails(accno);
+			if(b1.getBalance()>amt)
+			{
+				PreparedStatement pst=con.prepareStatement
+						("update bankcustomer set balance=balance-? where accno=?");
+				pst.setDouble(1, amt);
+				pst.setInt(2, accno);
+				int rows=pst.executeUpdate();
+				if(rows>0)
+					return true;
+			}
+			else
+			{
+				throw new Exception("Insufficient balance");
+			}
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		return false;
+	}
+	public boolean deposit(int accno,double amt)
+	{
+		try {
+			PreparedStatement pst=con.prepareStatement
+					("update bankcustomer set balance=balance+? where accno=?");
+			pst.setDouble(1, amt);
+			pst.setInt(2, accno);
+			int rows=pst.executeUpdate();
+			if(rows>0)
+				return true;
+			
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		return false;
+	}
+	public User validateUser(String username,String password) throws Exception
+	{
+		try {
+			PreparedStatement pst=con.prepareStatement
+					("select * from users1 where username=? and password=?");
+			pst.setString(1, username);
+			pst.setString(2, password);
+			ResultSet rs=pst.executeQuery();
+			User u=new User();
+			if(rs.next())
+			{
+				u.setUsername(rs.getString(1));
+				u.setPassword(rs.getString(2));
+				u.setRole(rs.getString(3));
+				return u;
+			}
+			else
+			{
+				throw new Exception("Invalid username or password");
+			}
+			
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
+	
+}
+
+
+package com.verizon.model;
+
+public class User {
+
+	String username;
+	String password;
+	String role;
+	
+	public User() {
+		super();
+		// TODO Auto-generated constructor stub
+	}
+	public User(String username, String password, String role) {
+		super();
+		this.username = username;
+		this.password = password;
+		this.role = role;
+	}
+	public String getUsername() {
+		return username;
+	}
+	public void setUsername(String username) {
+		this.username = username;
+	}
+	public String getPassword() {
+		return password;
+	}
+	public void setPassword(String password) {
+		this.password = password;
+	}
+	public String getRole() {
+		return role;
+	}
+	public void setRole(String role) {
+		this.role = role;
+	}
+	
+	
+}
+
+package com.verizon.servlets;
+
+import java.io.IOException;
+import java.util.List;
+
+import javax.servlet.RequestDispatcher;
+import javax.servlet.ServletConfig;
+import javax.servlet.ServletException;
+import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
+
+import com.verizon.dao.BankCustomerDAO;
+import com.verizon.model.BankCustomer;
+import com.verizon.model.User;
+
+/**
+ * Servlet implementation class LoginServlet
+ */
+@WebServlet("/LoginServlet")
+public class LoginServlet extends HttpServlet {
+	private static final long serialVersionUID = 1L;
+       
+	BankCustomerDAO dao;
+    @Override
+	public void init(ServletConfig config) throws ServletException {
+    	dao=new BankCustomerDAO();
+	}
+
+	public LoginServlet() {
+        super();
+        // TODO Auto-generated constructor stub
+    }
+
+	protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+		String uname=request.getParameter("uname");
+		String pass=request.getParameter("pass");
+		HttpSession session=request.getSession();
+		try {
+			User user=dao.validateUser(uname, pass);
+			if(user!=null)
+			{
+				session.setAttribute("user", user);
+				if(user.getRole().equals("s"))
+				{
+					List<BankCustomer> allCust=dao.getAllCustomers();
+					session.setAttribute("allCustomers", allCust);
+					RequestDispatcher rd=request.getRequestDispatcher("Transact.jsp");
+					rd.forward(request, response);
+				}
+			}
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+	}
+
+}
+
+
+<%@page import="com.verizon.model.BankCustomer"%>
+<%@ page language="java" contentType="text/html; charset=ISO-8859-1"
+    pageEncoding="ISO-8859-1"%>
+    <%@page import="com.verizon.model.*,java.util.* " %>
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+<title>Insert title here</title>
+</head>
+<body bgcolor="pink">
+
+<%
+	User u=(User)session.getAttribute("user");
+	List<BankCustomer> customers=(List<BankCustomer>)session.getAttribute("allCustomers");
+%>
+
+<h1>Welcome <%=u.getUsername() %></h1>
+
+<table border="2">
+<tr>
+<th>Cust id</th>
+<th>Cust name</th>
+<th>Acc No</th>
+<th>Balance</th>
+</tr>
+
+<%
+for(BankCustomer bc:customers){%>
+<tr>
+<td><%=bc.getCustId() %></td>
+<td><%=bc.getCustName() %></td>
+<td><%=bc.getAccno() %></td>
+<td><%=bc.getBalance() %></td>
+</tr>
+
+<% }%>
+
+</table>
+
+
+
+</body>
+</html>
